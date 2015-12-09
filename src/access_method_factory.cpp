@@ -30,15 +30,6 @@ using mysql::system::Binlog_file_driver;
 
    The format is <code>user[:password]@host[:port]</code>
 */
-using mysql::system::user_info;
-static Binary_log_driver *parse_mysql_url(const user_info* usr) {
-  std::cout << usr->user << std::endl;
-  std::cout << usr->pass << std::endl;
-  std::cout << usr->host << std::endl;
-  std::cout << usr->port << std::endl;
-  return new Binlog_tcp_driver(usr->user, usr->pass, usr->host, usr->port);
-}
-
 static Binary_log_driver *parse_mysql_url(const char *body, size_t len)
 {
   /* Find the beginning of the user name */
@@ -89,7 +80,8 @@ static Binary_log_driver *parse_mysql_url(const char *body, size_t len)
                                portno);
 }
 
-static Binary_log_driver *parse_file_url(const char *body, size_t len)
+
+static Binary_log_driver *parse_file_url(const char *body, size_t length)
 {
   /* Find the beginning of the file name */
   if (strncmp(body, "//", 2) != 0)
@@ -105,18 +97,12 @@ static Binary_log_driver *parse_file_url(const char *body, size_t len)
   return new Binlog_file_driver(body + 2);
 }
 
-static Binary_log_driver *parse_file_url(const user_info* usr)
-{
-  return new Binlog_file_driver(usr->path.c_str());
-}
-
 /**
    URI parser information.
  */
 struct Parser {
   const char* protocol;
-  //Binary_log_driver *(*parser)(const char *body, size_t length);
-  Binary_log_driver *(*parser)(const user_info* usr);
+  Binary_log_driver *(*parser)(const char *body, size_t length);
 };
 
 /**
@@ -127,29 +113,17 @@ static Parser url_parser[] = {
   { "file",  parse_file_url },
 };
 
-//Binary_log_driver *
-//mysql::system::create_transport(const char *url)
-//{
-  //const char *pfx = strchr(url, ':');
-  //if (pfx == 0)
-    //return NULL;
-  //for (int i = 0 ; i < sizeof(url_parser)/sizeof(*url_parser) ; ++i)
-  //{
-    //const char *proto = url_parser[i].protocol;
-    //if (strncmp(proto, url, strlen(proto)) == 0)
-      //return (*url_parser[i].parser)(pfx+1, strlen(pfx+1));
-  //}
-  //return NULL;
-//}
-
 Binary_log_driver *
-mysql::system::create_transport(const user_info* usr)
+mysql::system::create_transport(const char *url)
 {
+  const char *pfx = strchr(url, ':');
+  if (pfx == 0)
+    return NULL;
   for (int i = 0 ; i < sizeof(url_parser)/sizeof(*url_parser) ; ++i)
   {
     const char *proto = url_parser[i].protocol;
-    if (strncmp(proto, usr->proto.c_str(), strlen(proto)) == 0)
-      return (*url_parser[i].parser)(usr);
+    if (strncmp(proto, url, strlen(proto)) == 0)
+      return (*url_parser[i].parser)(pfx+1, strlen(pfx+1));
   }
   return NULL;
 }
