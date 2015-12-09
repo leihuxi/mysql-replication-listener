@@ -47,7 +47,7 @@ public:
       : Binary_log_driver("", 4), m_host(host), m_user(user), m_passwd(passwd),
         m_port(port), m_socket(NULL), m_waiting_event(0), m_event_loop(0),
         m_total_bytes_transferred(0), m_shutdown(false),
-        m_event_queue(new bounded_buffer<Binary_log_event*>(50))
+        m_event_queue(new bounded_buffer<Binary_log_event*>(5000))
     {
     }
 
@@ -150,7 +150,7 @@ private:
     /**
      * Reconnect to the server by first calling disconnect and then connect.
      */
-    void reconnect(void);
+    int reconnect(int times=-1);
 
     /**
      * Disconnet from the server. The io service must have been stopped before
@@ -165,9 +165,22 @@ private:
      */
     void shutdown(void);
 
-    boost::thread *m_event_loop;
-    boost::asio::io_service m_io_service;
+    std::string m_host;
+    std::string m_user;
+    std::string m_passwd;
+    long m_port;
     tcp::socket *m_socket;
+    /**
+     * This pointer points to an object constructed from event
+     * stream during async communication with
+     * server. If it is 0 it means that no event has been
+     * constructed yet.
+     */
+    Log_event_header *m_waiting_event;
+    Log_event_header m_log_event_header;
+    boost::thread *m_event_loop;
+    boost::uint64_t m_total_bytes_transferred;
+    boost::asio::io_service m_io_service;
     bool m_shutdown;
 
     /**
@@ -205,26 +218,9 @@ private:
     char * m_event_packet;
 
     /**
-     * This pointer points to an object constructed from event
-     * stream during async communication with
-     * server. If it is 0 it means that no event has been
-     * constructed yet.
-     */
-    Log_event_header *m_waiting_event;
-    Log_event_header m_log_event_header;
-    /**
      * A ring buffer used to dispatch aggregated events to the user application
      */
     bounded_buffer<Binary_log_event *> *m_event_queue;
-
-    std::string m_user;
-    std::string m_host;
-    std::string m_passwd;
-    long m_port;
-
-    boost::uint64_t m_total_bytes_transferred;
-
-
 };
 
 /**

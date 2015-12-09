@@ -67,6 +67,7 @@ public:
   virtual ~Dummy_driver() {}
 
   virtual int connect() { return 1; }
+  virtual int reconnect(int times=-1) {return 1;}
 
   virtual int wait_for_next_event(mysql::Binary_log_event **event) {
     return ERR_EOF;
@@ -94,8 +95,9 @@ private:
   std::string m_binlog_file;
 public:
   Binary_log(system::Binary_log_driver *drv);
-  ~Binary_log() {}
+  ~Binary_log() {delete m_driver;}
 
+  int reconnect(int times=-1);
   int connect();
 
   /**
@@ -143,6 +145,15 @@ public:
    * @return The file position
    */
   unsigned long get_position(std::string &filename);
+
+  /**
+   * Fetch the current active binlog file name.
+   */
+  std::string get_filename();
+  /**
+   * Fetch the current active drive binlog file name.
+   */
+  std::string get_driver_filename();
 
 };
 

@@ -5,11 +5,11 @@ set(replication_sources
   binlog_driver.cpp basic_transaction_parser.cpp tcp_driver.cpp
   file_driver.cpp binary_log.cpp protocol.cpp value.cpp binlog_event.cpp
   resultset_iterator.cpp basic_transaction_parser.cpp
-  basic_content_handler.cpp utilities.cpp)
+  basic_content_handler.cpp utilities.cpp )
 
 # Configure for building static library
 add_library(replication_static STATIC ${replication_sources})
-target_link_libraries(replication_static crypto ${Boost_LIBRARIES})
+target_link_libraries(replication_static crypto ${Boost_LIBRARIES} gflags)
 set_target_properties(replication_static PROPERTIES
   OUTPUT_NAME "replication")
 

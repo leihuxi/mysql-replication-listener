@@ -45,12 +45,20 @@ Binary_log_event* Binary_log_driver::parse_event(std::istream &is,
     case WRITE_ROWS_EVENT:
     case UPDATE_ROWS_EVENT:
     case DELETE_ROWS_EVENT:
+    case WRITE_ROWS_EVENT_V1:
+    case UPDATE_ROWS_EVENT_V1:
+    case DELETE_ROWS_EVENT_V1:
       parsed_event= proto_rows_event(is, header);
       break;
     case ROTATE_EVENT:
       {
         Rotate_event *rot= proto_rotate_event(is, header);
-        m_binlog_file_name= rot->binlog_file;
+        size_t pos = m_binlog_file_name.find_last_of("/");
+        if (pos != std::string::npos) {
+          m_binlog_file_name= m_binlog_file_name.substr(0,pos+1) + rot->binlog_file;
+        } else {
+          m_binlog_file_name= rot->binlog_file;
+        }
         m_binlog_offset= (unsigned long)rot->binlog_pos;
         parsed_event= rot;
       }

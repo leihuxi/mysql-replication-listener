@@ -53,10 +53,29 @@ boost::uint32_t extract_metadata(const Table_map_event *map, int col_no)
   break;
   case 2:
   {
-    unsigned int tmp= ((unsigned int)map->metadata[offset])&0xFF;
-    metadata=  static_cast<boost::uint32_t >(tmp);
-    tmp= (((unsigned int)map->metadata[offset+1])&0xFF) << 8;
-    metadata+= static_cast<boost::uint32_t >(tmp);
+    switch(type) {
+      case mysql::system::MYSQL_TYPE_SET:
+      case mysql::system::MYSQL_TYPE_ENUM:
+      case mysql::system::MYSQL_TYPE_STRING:
+      case mysql::system::MYSQL_TYPE_NEWDECIMAL:
+        {
+          unsigned int tmp= (((unsigned int)map->metadata[offset])&0xFF) << 8;
+          metadata=  static_cast<boost::uint32_t >(tmp);
+          tmp= ((unsigned int)map->metadata[offset+1])&0xFF;
+          metadata+= static_cast<boost::uint32_t >(tmp);
+          break;
+        }
+      case mysql::system::MYSQL_TYPE_BIT:
+      case mysql::system::MYSQL_TYPE_VARCHAR:
+      case mysql::system::MYSQL_TYPE_VAR_STRING:
+      default:
+        {
+          unsigned int tmp= ((unsigned int)map->metadata[offset])&0xFF;
+          metadata=  static_cast<boost::uint32_t >(tmp);
+          tmp= (((unsigned int)map->metadata[offset+1])&0xFF) << 8;
+          metadata+= static_cast<boost::uint32_t >(tmp);
+        }
+    }
   }
   break;
   }
@@ -67,21 +86,26 @@ int lookup_metadata_field_size(enum mysql::system::enum_field_types field_type)
 {
   switch(field_type)
   {
+    case mysql::system::MYSQL_TYPE_TINY_BLOB:
+    case mysql::system::MYSQL_TYPE_MEDIUM_BLOB:
+    case mysql::system::MYSQL_TYPE_LONG_BLOB:
+    case mysql::system::MYSQL_TYPE_BLOB:
     case mysql::system::MYSQL_TYPE_DOUBLE:
     case mysql::system::MYSQL_TYPE_FLOAT:
-    case mysql::system::MYSQL_TYPE_BLOB:
-    case mysql::system::MYSQL_TYPE_DATETIME2:
     case mysql::system::MYSQL_TYPE_GEOMETRY:
+    case mysql::system::MYSQL_TYPE_DATETIME2:
+    case mysql::system::MYSQL_TYPE_TIME2:
+    case mysql::system::MYSQL_TYPE_TIMESTAMP2:
      return 1;
+    case mysql::system::MYSQL_TYPE_SET:
+    case mysql::system::MYSQL_TYPE_ENUM:
+    case mysql::system::MYSQL_TYPE_STRING:
     case mysql::system::MYSQL_TYPE_BIT:
     case mysql::system::MYSQL_TYPE_VARCHAR:
     case mysql::system::MYSQL_TYPE_NEWDECIMAL:
-    case mysql::system::MYSQL_TYPE_STRING:
     case mysql::system::MYSQL_TYPE_VAR_STRING:
      return 2;
     case mysql::system::MYSQL_TYPE_DECIMAL:
-    case mysql::system::MYSQL_TYPE_SET:
-    case mysql::system::MYSQL_TYPE_ENUM:
     case mysql::system::MYSQL_TYPE_YEAR:
     case mysql::system::MYSQL_TYPE_TINY:
     case mysql::system::MYSQL_TYPE_SHORT:
@@ -93,9 +117,6 @@ int lookup_metadata_field_size(enum mysql::system::enum_field_types field_type)
     case mysql::system::MYSQL_TYPE_TIME:
     case mysql::system::MYSQL_TYPE_TIMESTAMP:
     case mysql::system::MYSQL_TYPE_DATETIME:
-    case mysql::system::MYSQL_TYPE_TINY_BLOB:
-    case mysql::system::MYSQL_TYPE_MEDIUM_BLOB:
-    case mysql::system::MYSQL_TYPE_LONG_BLOB:
     default:
       return 0;
   }

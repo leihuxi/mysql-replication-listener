@@ -100,7 +100,9 @@ size_t Row_event_iterator<Iterator_value_type>::fields(Iterator_value_type& fiel
        /*
         If the value is null it is not in the list of values and thus we won't
         increse the offset. TODO what if all values are null?!
-       */
+       */ 
+      if (val.length() == UINT_MAX)
+        throw std::logic_error("Field type is unrecognized");
       field_offset += val.length();
     }
     fields_vector.push_back(val);
@@ -124,6 +126,8 @@ template< class Iterator_value_type >
 Row_event_iterator< Iterator_value_type >&
   Row_event_iterator< Iterator_value_type >::operator++()
 { // preﬁx
+  if (m_field_offset == UINT_MAX)
+    throw std::logic_error("Field type is unrecognized");
   if (m_field_offset < m_row_event->row.size())
   {
     /*

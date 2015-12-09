@@ -74,13 +74,24 @@ public:
 
   Binary_log_event* parse_event(std::istream &sbuff, Log_event_header *header);
 
+  virtual int reconnect(int times=-1) =0;
+
+  std::string get_binlog_file_name() {return m_binlog_file_name;}
+  std::string set_binlog_file_name(std::string filename) {
+    size_t pos = m_binlog_file_name.find_last_of("/");
+    if (pos != std::string::npos) {
+      m_binlog_file_name= m_binlog_file_name.substr(0,pos+1) + filename;
+    } 
+    return m_binlog_file_name;
+  }
+
 protected:
+  std::string m_binlog_file_name;
   /**
    * Used each time the client reconnects to the server to specify an
    * offset position.
    */
   unsigned long m_binlog_offset;
-  std::string m_binlog_file_name;
 };
 
 } // namespace mysql::system

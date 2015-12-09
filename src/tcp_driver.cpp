@@ -46,6 +46,7 @@ using namespace mysql;
 
 typedef unsigned char uchar;
 
+
 namespace mysql { namespace system {
 
 static int encrypt_password(boost::uint8_t *reply,   /* buffer at least EVP_MAX_MD_SIZE */
@@ -121,11 +122,13 @@ tcp::socket *sync_connect_and_authenticate(boost::asio::io_service &io_service, 
   }
   } catch(...)
   {
+    //std::cout << "create sockket catch" << std::endl;
     return 0;
   }
 
   if (error)
   {
+    //std::cout << "create sockket has not found" << std::endl;
     return 0;
   }
 
@@ -148,6 +151,7 @@ tcp::socket *sync_connect_and_authenticate(boost::asio::io_service &io_service, 
   unsigned char packet_no;
   if (proto_read_package_header(socket, server_messages, &packet_length, &packet_no))
   {
+    //std::cout << "proto_read_package_head erorr" << std::endl;
     return 0;
   }
 
@@ -164,8 +168,10 @@ tcp::socket *sync_connect_and_authenticate(boost::asio::io_service &io_service, 
 
   proto_get_handshake_package(server_stream, handshake_package, packet_length);
 
-  if (authenticate(socket, user, passwd, handshake_package))
+  if (authenticate(socket, user, passwd, handshake_package)) {
+    //std::cout << "authenticat err" << std::endl;
     return 0;
+  }
 
   /*
    * Register slave to master
@@ -229,6 +235,7 @@ tcp::socket *sync_connect_and_authenticate(boost::asio::io_service &io_service, 
                        boost::asio::transfer_at_least(size));
   } catch( boost::system::error_code e)
   {
+    //std::cout << "write_packet_header err:" << e << std::endl;
     return 0;
   }
 
@@ -250,6 +257,7 @@ tcp::socket *sync_connect_and_authenticate(boost::asio::io_service &io_service, 
   {
     struct st_error_package error_package;
     prot_parse_error_message(cmd_response_stream, error_package, packet_length);
+    //std::cout << "prot_parse_ok_messag :" << error_package.message << std::endl;
     return 0;
   }
 
@@ -330,6 +338,7 @@ void Binlog_tcp_driver::handle_net_packet(const boost::system::error_code& err, 
 {
   if (err)
   {
+    //std::cerr << "handle_net_packet err= " << err.message() << " bytes_transferred = " << bytes_transferred << std::endl;
     Binary_log_event * ev= create_incident_event(175, err.message().c_str(), m_binlog_offset);
     m_event_queue->push_front(ev);
     return;
@@ -368,7 +377,8 @@ void Binlog_tcp_driver::handle_net_packet(const boost::system::error_code& err, 
     //std::cerr << " Size after: " << m_event_stream_buffer.size() << std::endl;
   }
 
-  //std::cerr << "Event length: " << m_waiting_event->header()->event_length << " and available payload size is " << m_event_stream_buffer.size()+LOG_EVENT_HEADER_SIZE-1 <<  std::endl;
+  //std::cerr << "Event length: " << m_waiting_event->event_length << " and available payload size is " << m_event_stream_buffer.size()+LOG_EVENT_HEADER_SIZE-1 <<  std::endl;
+  //std::cerr << "Event type: " << m_waiting_event->type_code << std::endl;
   if (m_waiting_event->event_length == m_event_stream_buffer.size() + LOG_EVENT_HEADER_SIZE - 1)
   {
     /*
@@ -526,7 +536,7 @@ void Binlog_tcp_driver::handle_net_packet_header(const boost::system::error_code
     {
       struct st_error_package error_package;
       prot_parse_error_message(auth_response_stream, error_package, packet_length);
-      std::cout << error_package.message << std::endl;
+      std::cerr << "authe response:"<< error_package.message << std::endl;
       return 1;
     }
 
@@ -534,6 +544,7 @@ void Binlog_tcp_driver::handle_net_packet_header(const boost::system::error_code
   } catch (boost::system::system_error e)
   {
     // TODO log error; adjust return code
+    std::cerr << "catch err" << e.what() << std::endl;
     return 1;
   }
 }
@@ -590,10 +601,11 @@ int Binlog_tcp_driver::connect()
 /**
  * Make synchronous reconnect.
  */
-void Binlog_tcp_driver::reconnect()
+int Binlog_tcp_driver::reconnect(int times)
 {
   disconnect();
   connect(m_user, m_passwd, m_host, m_port);
+  return ERR_OK;
 }
 
 void Binlog_tcp_driver::disconnect()

@@ -25,11 +25,23 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 
 namespace mysql {
 namespace system {
+
+struct user_info {
+  std::string user;
+  std::string pass;
+  std::string host;
+  int         port;
+  std::string path;
+  std::string proto;
+};
 Binary_log_driver *create_transport(const char *url);
 Binary_log_driver *parse_mysql_url(char *url, const char
                                    *mysql_access_method);
 Binary_log_driver *parse_file_url(char *url, const char
                                   *file_access_method);
+Binary_log_driver *create_transport(const user_info* usr);
+Binary_log_driver *parse_mysql_url(const user_info* usr); 
+Binary_log_driver *parse_file_url(const user_info* usr); 
 }
 }
 

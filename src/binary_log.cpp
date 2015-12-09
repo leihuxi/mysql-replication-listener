@@ -117,4 +117,17 @@ int Binary_log::connect()
   return m_driver->connect();
 }
 
+int Binary_log::reconnect(int times)
+{
+  return m_driver->reconnect(times);
+}
+
+std::string Binary_log::get_filename() {
+  return m_binlog_file;
+}
+
+std::string Binary_log::get_driver_filename() {
+  return m_driver->get_binlog_file_name();
+}
+
 }

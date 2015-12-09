@@ -77,24 +77,47 @@ enum Log_event_type
   /*
     These event numbers are used from 5.1.16 and forward
    */
-  WRITE_ROWS_EVENT = 23,
-  UPDATE_ROWS_EVENT = 24,
-  DELETE_ROWS_EVENT = 25,
+  WRITE_ROWS_EVENT_V1 = 23,
+  UPDATE_ROWS_EVENT_V1 = 24,
+  DELETE_ROWS_EVENT_V1 = 25,
 
   /*
     Something out of the ordinary happened on the master
    */
   INCIDENT_EVENT= 26,
 
-          /*
-           * A user defined event
-           */
-          USER_DEFINED= 27,
   /*
-    Add new events here - right above this comment!
-    Existing events (except ENUM_END_EVENT) should never change their numbers
+  Heartbeat event to be send by master at its idle time
+  to ensure master's online status to slave
   */
 
+  HEARTBEAT_LOG_EVENT = 27,
+  /*
+  Add new events here - right above this comment!
+  Existing events (except ENUM_END_EVENT) should never change their numbers
+  */
+  /*
+  In some situations, it is necessary to send over ignorable
+  data to the slave: data that a slave can handle in case there
+  is code for handling it, but which can be ignored if it is not
+  recognized.
+  */
+  IGNORABLE_LOG_EVENT= 28,
+  ROWS_QUERY_LOG_EVENT= 29,
+
+  /* Version 2 of the Row events */
+  WRITE_ROWS_EVENT = 30,
+  UPDATE_ROWS_EVENT = 31,
+  DELETE_ROWS_EVENT = 32,
+
+  GTID_LOG_EVENT= 33,
+  ANONYMOUS_GTID_LOG_EVENT= 34,
+  PREVIOUS_GTIDS_LOG_EVENT= 35,
+
+  /*
+  * |* A user defined event
+  */
+  USER_DEFINED= 36,
 
   ENUM_END_EVENT /* end marker */
 };
@@ -231,6 +254,8 @@ public:
     Row_event(Log_event_header *header) : Binary_log_event(header) {}
     boost::uint64_t table_id;
     boost::uint16_t flags;
+    boost::uint16_t extra_data_len;
+    std::vector<boost::uint8_t> extra_data;
     boost::uint64_t columns_len;
     boost::uint32_t null_bits_len;
     std::vector<boost::uint8_t> columns_before_image;
@@ -260,6 +285,14 @@ class Xid: public Binary_log_event
 public:
     Xid(Log_event_header *header) : Binary_log_event(header) {}
     boost::uint64_t xid_id;
+};
+
+class Rand_event: public Binary_log_event
+{
+public:
+    Rand_event(Log_event_header *header) : Binary_log_event(header) {}
+    boost::uint8_t seed1;
+    boost::uint8_t seed2;
 };
 
 Binary_log_event *create_incident_event(unsigned int type, const char *message, unsigned long pos= 0);

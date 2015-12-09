@@ -243,6 +243,11 @@ std::istream &operator>>(std::istream &is, Protocol &chunk)
       chunk.collapse_size(3);
       ct= 1;
     }
+    else if(byte == 254)
+    {
+      chunk.collapse_size(8);
+      ct= 1;
+    }
 
     /* Read remaining bytes */
     //is.read((char *)chunk.data(), chunk.size()-1);
@@ -407,26 +412,48 @@ Incident_event *proto_incident_event(std::istream &is, Log_event_header *header)
 
   return incident;
 }
-
 Row_event *proto_rows_event(std::istream &is, Log_event_header *header)
 {
   Row_event *rev=new Row_event(header);
-
   union
   {
     boost::uint64_t integer;
     boost::uint8_t bytes[6];
   } table_id;
 
-  table_id.integer=0L;
-  Protocol_chunk<boost::uint8_t>  proto_table_id(&table_id.bytes[0], 6);
-  Protocol_chunk<boost::uint16_t> proto_flags(rev->flags);
-  Protocol_chunk<boost::uint64_t> proto_column_len(rev->columns_len);
-  proto_column_len.set_length_encoded_binary(true);
+  int bytes_read;
+  table_id.integer= 0L;
+  Protocol_chunk<uint8_t>  proto_table_id(&table_id.bytes[0], 6);
+  Protocol_chunk<uint16_t> proto_flags(rev->flags);
 
   is >> proto_table_id
-     >> proto_flags
-     >> proto_column_len;
+    >> proto_flags;
+
+  bytes_read= proto_table_id.size() + proto_flags.size();
+
+  if (header->type_code == WRITE_ROWS_EVENT ||
+      header->type_code == DELETE_ROWS_EVENT ||
+      header->type_code == UPDATE_ROWS_EVENT)
+  {
+    /*
+       Have variable length header, check length,
+       which includes length bytes
+       */
+    Protocol_chunk<boost::uint16_t> proto_extra_data_len(rev->extra_data_len);
+    is >> proto_extra_data_len;
+
+    if (rev->extra_data_len < 2)
+      return NULL;
+
+    Protocol_chunk_vector proto_extra_data(rev->extra_data, rev->extra_data_len-2);
+    is >> proto_extra_data;
+    bytes_read+= proto_extra_data_len.size() + proto_extra_data.size();
+  }
+
+  Protocol_chunk<uint64_t> proto_column_len(rev->columns_len);
+  proto_column_len.set_length_encoded_binary(true);
+
+  is >> proto_column_len;
 
   rev->table_id=table_id.integer;
   int used_column_len=(int) ((rev->columns_len + 7) / 8);
@@ -434,22 +461,19 @@ Row_event *proto_rows_event(std::istream &is, Log_event_header *header)
   rev->null_bits_len= used_column_len;
 
   is >> proto_used_columns;
+  bytes_read+= proto_column_len.size() + used_column_len;
 
-  if (header->type_code == UPDATE_ROWS_EVENT)
+  if (header->type_code == UPDATE_ROWS_EVENT ||
+      header->type_code == UPDATE_ROWS_EVENT_V1)
   {
-    Protocol_chunk_vector proto_columns_before_image(rev->columns_before_image, used_column_len);
+    Protocol_chunk_vector proto_columns_before_image(rev->columns_before_image,
+        used_column_len);
     is >> proto_columns_before_image;
-  }
-
-  int bytes_read=proto_table_id.size() + proto_flags.size() + proto_column_len.size() + used_column_len;
-  if (header->type_code == UPDATE_ROWS_EVENT)
     bytes_read+=used_column_len;
-
-  unsigned long row_len= header->event_length - bytes_read - LOG_EVENT_HEADER_SIZE + 1;
-  //std::cout << "Bytes read: " << bytes_read << " Bytes expected: " << rev->row_len << std::endl;
+  }
+  ulong row_len= header->event_length - bytes_read - LOG_EVENT_HEADER_SIZE + 1;
   Protocol_chunk_vector proto_row(rev->row, row_len);
   is >> proto_row;
-
   return rev;
 }
 
@@ -462,6 +486,17 @@ Int_var_event *proto_intvar_event(std::istream &is, Log_event_header *header)
   is >> proto_type
      >> proto_value;
 
+  return event;
+}
+
+Rand_event *proto_rand_event(std::istream &is, Log_event_header *header)
+{
+  Rand_event *event= new Rand_event(header);
+
+  Protocol_chunk<boost::uint8_t>  proto_seed1(event->seed1);
+  Protocol_chunk<boost::uint64_t> proto_seed2(event->seed2);
+  is >> proto_seed1
+     >> proto_seed2;
   return event;
 }
 

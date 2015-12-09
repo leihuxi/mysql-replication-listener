@@ -32,6 +32,7 @@ mysql::Binary_log_event *Content_handler::process_event(mysql::User_var_event *e
 mysql::Binary_log_event *Content_handler::process_event(mysql::Incident_event *ev) { return ev; }
 mysql::Binary_log_event *Content_handler::process_event(mysql::Rotate_event *ev) { return ev; }
 mysql::Binary_log_event *Content_handler::process_event(mysql::Int_var_event *ev) { return ev; }
+mysql::Binary_log_event *Content_handler::process_event(mysql::Rand_event *ev) { return ev; }
 mysql::Binary_log_event *Content_handler::process_event(mysql::Binary_log_event *ev) { return ev; }
 
 Injection_queue *Content_handler::get_injection_queue(void)
@@ -55,6 +56,9 @@ mysql::Binary_log_event*
  case mysql::WRITE_ROWS_EVENT:
  case mysql::UPDATE_ROWS_EVENT:
  case mysql::DELETE_ROWS_EVENT:
+ case mysql::WRITE_ROWS_EVENT_V1:
+ case mysql::UPDATE_ROWS_EVENT_V1:
+ case mysql::DELETE_ROWS_EVENT_V1:
    processed_event= process_event(static_cast<mysql::Row_event*>(ev));
    break;
  case mysql::USER_VAR_EVENT:
@@ -83,13 +87,13 @@ mysql::Binary_log_event*
    processed_event= process_event(ev);
    break;
  case mysql::INTVAR_EVENT:
-   processed_event= process_event(ev);
+   processed_event= process_event(static_cast<mysql::Int_var_event *>(ev));
    break;
  case mysql::STOP_EVENT:
    processed_event= process_event(ev);
    break;
  case mysql::RAND_EVENT:
-   processed_event= process_event(ev);
+   processed_event= process_event(static_cast<mysql::Rand_event *>(ev));
    break;
  /****************************************************************************/
  default:
