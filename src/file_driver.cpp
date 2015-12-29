@@ -33,14 +33,10 @@ using namespace std;
     char magic_buf[MAGIC_NUMBER_SIZE];
 
     // Get the file size.
-    if (stat(m_binlog_file_name.c_str(), &stat_buff) == -1){
-      return ERR_EOF;                          // Can't stat binlog file.
-    }
-
+    if (stat(m_binlog_file_name.c_str(), &stat_buff) == -1)
+      return ERR_FAIL;                          // Can't stat binlog file.
     m_binlog_file_size= stat_buff.st_size;
-    if (m_binlog_file_size < 4) {
-      return ERR_EOF;                          // Can't stat binlog file.
-    }
+
     m_binlog_file.exceptions(ifstream::failbit | ifstream::badbit |
                            ifstream::eofbit);
 
@@ -71,20 +67,6 @@ using namespace std;
   int Binlog_file_driver::disconnect()
   {
     m_binlog_file.close();
-    return ERR_OK;
-  }
-  int Binlog_file_driver::reconnect(int times) {
-    try {
-      int i = 0;
-      int err = ERR_OK;
-      disconnect();
-      while ((err = connect()) == ERR_EOF && ++i!=times);
-      if (err == ERR_FAIL) {
-        return ERR_FAIL;
-      }
-    }catch (...) {
-      return ERR_FAIL;
-    }
     return ERR_OK;
   }
 
@@ -133,15 +115,8 @@ using namespace std;
 
     try
     {
-      if(m_bytes_read + 19 > m_binlog_file_size) {
-        struct stat stat_buff;
-        if(stat(m_binlog_file_name.c_str(), &stat_buff) == -1) {
-          return ERR_FAIL;                          // Can't stat binlog file.
-        }
-        m_binlog_file_size= stat_buff.st_size;
-      }
-
-      if(m_bytes_read + 19 <= m_binlog_file_size && m_binlog_file.good()) {
+      if(m_bytes_read < m_binlog_file_size && m_binlog_file.good())
+      {
         //Protocol_chunk<boost::uint8_t> prot_marker(m_event_log_header.marker);
         Protocol_chunk<boost::uint32_t> prot_timestamp(m_event_log_header.timestamp);
         Protocol_chunk<boost::uint8_t> prot_type_code(m_event_log_header.type_code);
@@ -159,17 +134,6 @@ using namespace std;
                       >> prot_next_position
                       >> prot_flags;
 
-        if (m_bytes_read + m_event_log_header.event_length > m_binlog_file_size) {
-          struct stat stat_buff;
-          if(stat(m_binlog_file_name.c_str(), &stat_buff) == -1) {
-            return ERR_FAIL;                          // Can't stat binlog file.
-          }
-          m_binlog_file_size= stat_buff.st_size;
-        }
-
-        if (m_bytes_read + m_event_log_header.event_length > m_binlog_file_size) {
-          return ERR_EOF;
-        }
         /*
         m_binlog_file.read(reinterpret_cast<char*>(&m_event_log_header.timestamp),
                            sizeof(boost::uint32_t));
